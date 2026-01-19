@@ -853,10 +853,12 @@ static int sh_sdhi_dm_probe(struct udevice *dev)
 	struct sh_sdhi_plat *plat = dev_get_plat(dev);
 	struct sh_sdhi_host *host = dev_get_priv(dev);
 	struct mmc_uclass_priv *upriv = dev_get_uclass_priv(dev);
+#if !(defined(CONFIG_R9A09G047) || defined(CONFIG_R9A09G057))
 	struct clk sh_sdhi_clk;
+	int ret;
+#endif
 	const u32 quirks = dev_get_driver_data(dev);
 	fdt_addr_t base;
-	int ret;
 
 	base = dev_read_addr(dev);
 	if (base == FDT_ADDR_T_NONE)

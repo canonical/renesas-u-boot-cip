@@ -14,12 +14,13 @@
 #include <asm/arch/sys_proto.h>
 #include <asm/gpio.h>
 #include <asm/arch/gpio.h>
-#include <asm/arch/rmobile.h>
+#include <asm/arch/renesas.h>
 #include <asm/arch/rcar-mstp.h>
 #include <asm/arch/sh_sdhi.h>
 #include <i2c.h>
 #include <mmc.h>
 #include <linux/delay.h>
+#include <efi_loader.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -42,6 +43,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define PFC_23				(PFC_BASE + 0x048C)
 #define	PMC_24				(PFC_BASE + 0x0224)
 #define	PFC_24				(PFC_BASE + 0x0490)
+#define	PFC_OSCBYPS			(PFC_BASE + 0x3C00)
 
 #define PWPR_REGWE_A			BIT(6)
 #define	PWPR_REGWE_B			BIT(5)
@@ -52,10 +54,14 @@ DECLARE_GLOBAL_DATA_PTR;
 
 /* CPG */
 #define CPG_BASE			0x10420000
-#define CPG_CLKON_ETH0			(CPG_BASE + 0x062C)
-#define CPG_CLKMON_ETH0			(CPG_BASE + 0x0814)
-#define CPG_RESET_ETH			(CPG_BASE + 0x092C)
-#define CPG_RESETMON_ETH		(CPG_BASE + 0x0A14)
+#define CPG_SSEL0			(CPG_BASE + 0x0300)
+#define CPG_SSEL1			(CPG_BASE + 0x0304)
+#define CPG_CLKON_11			(CPG_BASE + 0x062C)
+#define CPG_CLKON_12			(CPG_BASE + 0x0630)
+#define CPG_CLKMON_5			(CPG_BASE + 0x0814)
+#define CPG_CLKMON_6			(CPG_BASE + 0x0818)
+#define CPG_RST_11			(CPG_BASE + 0x092C)
+#define CPG_RSTMON_5			(CPG_BASE + 0x0A14)
 
 #define CPG_RST_USB			(CPG_BASE + 0x0928)
 #define CPG_RSTMON4_USB			(CPG_BASE + 0x0A10)
@@ -64,7 +70,11 @@ DECLARE_GLOBAL_DATA_PTR;
 #define CPG_CLKMON_USB			(CPG_BASE + 0x0814)
 
 #define PFC_OEN				(PFC_BASE + 0x3C40)
+#define PFC_OEN_OEN0			BIT(0)
+#define PFC_OEN_OEN1			BIT(1)
 #define PFC_PWPR			(PFC_BASE + 0x3C04)
+
+#define ICU_IPTSR_REG				0x10400060
 
 /* USB */
 #define USBPHY20_BASE			(0x15830000)
@@ -83,17 +93,41 @@ DECLARE_GLOBAL_DATA_PTR;
 #define USB2_PHY_RESET			0x000
 #define USB2_PHY_OTGR			0x600
 
+#define SYS_ADC_CFG			0x10431600
+
+#if IS_ENABLED(CONFIG_EFI_HAVE_CAPSULE_SUPPORT)
+
+#define EFI_FIRMWARE_IMAGE_TYPE_RZV2H_GUID \
+	EFI_GUID(0x7f26b24e, 0x7cc4, 0x40a5, 0x8d, 0x3b, 0x0c, 0xbf, 0x47, 0x3f, 0x7a, 0x83)
+
+struct efi_fw_image fw_images[] = {
+	{
+		.image_type_id = EFI_FIRMWARE_IMAGE_TYPE_RZV2H_GUID,
+		.fw_name = u"RENESAS-FIP",
+		.image_index = 1,
+	},
+};
+
+struct efi_capsule_update_info update_info = {
+	.dfu_string = "sf 0:0=fip.bin raw 0x20000 0x1F0000\0",
+	.num_images = ARRAY_SIZE(fw_images),
+	.images = fw_images,
+};
+#endif /* EFI_HAVE_CAPSULE_SUPPORT */
 
 void s_init(void)
 {
 	*(volatile u32 *)PWPR |= (PWPR_REGWE_A | PWPR_REGWE_B);
+
+	/* Enable ADC */
+	*(volatile u32 *)(SYS_ADC_CFG) = 0;
 
 #if CONFIG_TARGET_RZV2H_DEV
 	*(volatile u8 *)PMC_2A   &= ~(0x03<<4);	/* PA5,PA4 port	*/
 	*(volatile u8 *)P_2A      = (*(volatile u32 *)P_2A  & ~(0x03<<4)) | (0x01 <<5); /* PA5=1,PA4=0		*/
 	*(volatile u16 *)PM_2A    = (*(volatile u32 *)PM_2A & ~(0x0f<<8)) | (0x0c <<8); /* PA5,PA4 output	*/
 #endif
-#if CONFIG_TARGET_RZV2H_EVK_ALPHA
+#if CONFIG_TARGET_RZV2H_EVK_ALPHA || CONFIG_TARGET_RZV2H_EVK_VER1
 	/* SD1  */
 	*(volatile u8 *)PMC_2A   &= ~(0x03 << 2);/* PA3,PA2 port */
 	*(volatile u8 *)P_2A      = (*(volatile u32 *)P_2A  & ~(0x03<<2)) | (0x01 <<3); /* PA3=1,PA2=0		*/
@@ -125,30 +159,54 @@ void s_init(void)
 	*(volatile u32 *)PFC_20  = (*(volatile u32 *)PFC_20 & 0x00FFFFFF) | (0x01 << 28) | (0x01 << 24);
 	*(volatile u8 *)PMC_20   |= (0x03) << 6;	/* P07,P06 multiplexed function	*/
 
-	*(volatile u32 *)PWPR &= ~(PWPR_REGWE_A | PWPR_REGWE_B);
-
 	*(volatile u32 *)CPG_CLKON_9 = 0x00080008;
 	*(volatile u32 *)CPG_RST_10  = 0x00010001;
 
+	/* Enale OE of IO block for xSPI */
+	*(volatile u32 *)(PFC_OEN) &= ~GENMASK(5,2);
+
 	// Use PLL clock for clk_tx_i only for RGMII mode
 	// Wite OEN reg. OEN0 bit "0" for output direction
-	*(volatile u32 *)(PFC_OEN) &= ~(0x00000001);
-	while((*(volatile u32 *)(PFC_OEN) & 0x00000001) != 0x0)
+	*(volatile u32 *)(PFC_OEN) &= ~(PFC_OEN_OEN1 | PFC_OEN_OEN0);
+	while((*(volatile u32 *)(PFC_OEN) & (PFC_OEN_OEN1 | PFC_OEN_OEN0)) != 0x0)
 		;
+	
+	*(volatile u32 *)PWPR &= ~(PWPR_REGWE_A | PWPR_REGWE_B);
+
+	/* Set Bypass and Powerdown mode for Audio OSC */
+	*(volatile u32 *)(PFC_OSCBYPS) = 0x001C0406;
+
+	*(volatile u32 *)(ICU_IPTSR_REG) = 0;
+	
+	/* Reset ETH 0,1 */
+	*(volatile u32 *)(CPG_RST_11) = 0x00030000;
+	while((*(volatile u32 *)(CPG_RSTMON_5) & 0x00000006) == 0x0)
+		;
+
+	/* Release reset ETH0,1 */
+	*(volatile u32 *)(CPG_RST_11) = 0x00030003;
+	while((*(volatile u32 *)(CPG_RSTMON_5) & 0x00000006) != 0x0)
+		;
+
+	/* Disable SMUX2_GBE0_RXCLK and SMUX2_GBE1_RXCLK */
+	*(volatile u32 *) (CPG_SSEL0) = 0x10000000;
+	*(volatile u32 *) (CPG_SSEL1) = 0x00100000;
+
+	/* Enable SMUX2_GBE0_RXCLK and SMUX2_GBE1_RXCLK */
+	*(volatile u32 *) (CPG_SSEL0) = 0x10001000;
+	*(volatile u32 *) (CPG_SSEL1) = 0x00100010;
 
 	/* Enable aclk_csr, aclk, tx, rx, tx_180, rx_180 for ETH0 */
-	*(volatile u32 *)(CPG_CLKON_ETH0) = 0x3F003F00;
-	while((*(volatile u32 *)(CPG_CLKMON_ETH0) & 0x3F000000) != 0x3F000000)
+	/* Enable tx, rx for ETH1 */
+	*(volatile u32 *)(CPG_CLKON_11) = 0xFF00FF00;
+	while((*(volatile u32 *)(CPG_CLKMON_5) & 0xFF000000) != 0xFF000000)
 		;
 
-	/* Reset ETH 0 */
-	*(volatile u32 *)(CPG_RESET_ETH) = 0x00010000;
-	while((*(volatile u32 *)(CPG_RESETMON_ETH) & 0x00000002) == 0x0)
+	/* Enable aclk_csr, aclk, tx_180, rx_180 for ETH1 */
+	*(volatile u32 *)(CPG_CLKON_12) = 0x000F000F;
+	while((*(volatile u32 *)(CPG_CLKMON_6) & 0x0000000F) != 0x0000000F)
 		;
 
-	*(volatile u32 *)(CPG_RESET_ETH) = 0x00010001;
-	while((*(volatile u32 *)(CPG_RESETMON_ETH) & 0x00000002) != 0x0)
-		;
 }
 
 static void _usbphy_init(void)
@@ -230,7 +288,7 @@ static void board_usb_init(void)
 	(*(volatile u32 *)PFC_PFC26) |= (0xF << 12);
 #endif /* CONFIG_TARGET_RZV2H_DEV */
 
-#if CONFIG_TARGET_RZV2H_EVK_ALPHA
+#if CONFIG_TARGET_RZV2H_EVK_ALPHA || CONFIG_TARGET_RZV2H_EVK_VER1
         /* Set P9_5 as Func.14 for VBUSEN */
         /* Control mode (multiplexed function) */
         (*(volatile u32 *)PFC_PMC29) |= (0x1u << 5);
@@ -258,7 +316,7 @@ static void board_usb_init(void)
         (*(volatile u32 *)PFC_PFC26) &= ~(0xF << 28);
         /* Function mode 15 */
         (*(volatile u32 *)PFC_PFC26) |= (0x0E << 28);
-#endif /* CONFIG_TARGET_RZV2H_EVK_ALPHA */
+#endif /* CONFIG_TARGET_RZV2H_EVK_ALPHA || CONFIG_TARGET_RZV2H_EVK_VER1 */
 
 	/* Enable Write protect */
 	(*(volatile u32 *)PFC_PWPR) &= ~(0x1u << 6);
@@ -280,6 +338,76 @@ static void board_usb_init(void)
 	(*(volatile u32 *)(USB21_BASE + HcRhDescriptorA)) |= (0x1u << 12);
 }
 
+static void board_pmic_i2c_init(void)
+{
+	struct udevice *bus, *dev;
+	int ret;
+	u8 reg_addr, reg_val, read_val;
+
+	/* Get the I2C bus */
+	ret = uclass_get_device_by_seq(UCLASS_I2C, 8, &bus);
+	if (ret)
+		goto pmic_failed;
+
+	/* Initialize I2C device at address 0x6a */
+	ret = dm_i2c_probe(bus, 0x6a, 0, &dev);
+	if (ret)
+		goto pmic_failed;
+
+	/* Write 0x00 to register 0x24 of device 0x6a */
+	reg_addr = 0x24;
+	reg_val = 0x00;
+	ret = dm_i2c_write(dev, reg_addr, &reg_val, 1);
+	if (ret)
+		goto pmic_failed;
+
+	/* Read the value of register 0x24 of device address 0x6a */
+	ret = dm_i2c_read(dev, reg_addr, &read_val, 1);
+	if (ret) {
+		printf("Failed to get value of register 0x%x\n", reg_addr);
+		goto pmic_failed;
+	}
+
+	/* Check if DCDC installation was successful */
+	if (read_val != reg_val) {
+		printf("Written value was not correctly at register 0x%x\n",
+		       reg_addr);
+		goto pmic_failed;
+	}
+
+	return;
+
+pmic_failed:
+	printf("Can not initialize PMIC settings via I2C8\n");
+	return;
+}
+
+
+int board_late_init(void)
+{
+	struct udevice *dev;
+	const u8 pmic_i2c_bus = 8;
+	u8 reg;
+	int ret;
+
+	ret = i2c_get_chip_for_busnum(pmic_i2c_bus, 0x12, 1, &dev);
+
+	if (!ret)
+	{
+		dm_i2c_read(dev, 0x3c, &reg, 1);
+		reg &= (~0x01);
+
+		dm_i2c_write(dev, 0x3c, &reg, 1);
+
+		udelay(2);
+		reg |= (0x01);
+
+		dm_i2c_write(dev, 0x3c, &reg, 1);
+	}
+
+	return ret;
+}
+
 int board_early_init_f(void)
 {
 
@@ -292,6 +420,11 @@ int board_init(void)
 	gd->bd->bi_boot_params = CONFIG_TEXT_BASE + 0x50000;
 
 	board_usb_init();
+
+	/* Initialize PMIC I2C devices */
+#if (CONFIG_TARGET_RZV2H_EVK_VER1)
+	board_pmic_i2c_init();
+#endif
 
 	return 0;
 }

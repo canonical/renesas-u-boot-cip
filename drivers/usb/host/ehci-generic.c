@@ -28,7 +28,7 @@ struct generic_ehci {
 	struct phy phy;
 	struct udevice *vbus_supply;
 };
-
+#ifndef CONFIG_R9A09G057
 static int ehci_enable_vbus_supply(struct udevice *dev)
 {
 	struct generic_ehci *priv = dev_get_priv(dev);
@@ -47,6 +47,7 @@ static int ehci_enable_vbus_supply(struct udevice *dev)
 
 	return 0;
 }
+#endif
 
 static int ehci_disable_vbus_supply(struct generic_ehci *priv)
 {
@@ -66,6 +67,7 @@ static int ehci_usb_probe(struct udevice *dev)
 	struct ehci_hcor *hcor;
 	int err, ret;
 
+#ifndef CONFIG_R9A09G057
 	err = 0;
 	ret = clk_get_bulk(dev, &priv->clocks);
 	if (ret && ret != -ENOENT) {
@@ -98,7 +100,7 @@ static int ehci_usb_probe(struct udevice *dev)
 	err = generic_setup_phy(dev, &priv->phy, 0);
 	if (err)
 		goto regulator_err;
-
+#endif
 	hccr = map_physmem(dev_read_addr(dev), 0x100, MAP_NOCACHE);
 	hcor = (struct ehci_hcor *)((uintptr_t)hccr +
 				    HC_LENGTH(ehci_readl(&hccr->cr_capbase)));
@@ -113,7 +115,7 @@ phy_err:
 	ret = generic_shutdown_phy(&priv->phy);
 	if (ret)
 		dev_err(dev, "failed to shutdown usb phy (ret=%d)\n", ret);
-
+#ifndef CONFIG_R9A09G057
 regulator_err:
 	ret = ehci_disable_vbus_supply(priv);
 	if (ret)
@@ -127,7 +129,7 @@ clk_err:
 	ret = clk_release_bulk(&priv->clocks);
 	if (ret)
 		dev_err(dev, "failed to release clocks (ret=%d)\n", ret);
-
+#endif
 	return err;
 }
 

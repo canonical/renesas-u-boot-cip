@@ -90,7 +90,7 @@ config R9A09G047
 
 config R9A09G057
 	bool "Renesas SoC RZ/V2H"
-
+	imply CLK_R9A09G057
 endmenu
 
 choice
@@ -255,6 +255,11 @@ config TARGET_SMARC_RZG3E
 	bool "RZ/G3E SMARC board"
 	help
           Support for Renesas RZ/G3E Dev Platform
+
+config TARGET_RZV2H_EVK_VER1
+	bool "RZ/V2H EVK Version 1 board"
+	help
+	  Support for Renesas RZ/V2H Version 1 Platform
 
 endchoice
 

@@ -149,3 +149,9 @@ int usb_gadget_handle_interrupts(int index)
 	usbhs_dev.irq(0, usbhs_dev.priv);
 	return 0;
 }
+
+int dm_usb_gadget_handle_interrupts(struct udevice *dev)
+{
+	usb_gadget_handle_interrupts(0);
+	return 0;
+}
