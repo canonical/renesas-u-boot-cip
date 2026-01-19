@@ -109,7 +109,7 @@ struct efi_fw_image fw_images[] = {
 };
 
 struct efi_capsule_update_info update_info = {
-	.dfu_string = "sf 0:0=fip.bin raw 0x20000 0x1F0000\0",
+	.dfu_string = "sf 0:0=fip.bin raw 0x60000 0x1F0000\0",
 	.num_images = ARRAY_SIZE(fw_images),
 	.images = fw_images,
 };
