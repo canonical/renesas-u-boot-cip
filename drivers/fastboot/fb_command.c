@@ -10,6 +10,7 @@
 #include <fastboot-internal.h>
 #include <fb_mmc.h>
 #include <fb_nand.h>
+#include <flash.h>
 #include <part.h>
 #include <stdlib.h>
 
@@ -36,6 +37,7 @@ static void erase(char *, char *);
 static void reboot_bootloader(char *, char *);
 static void reboot_fastbootd(char *, char *);
 static void reboot_recovery(char *, char *);
+static void oem_emmcupdate(char *, char *);
 static void oem_format(char *, char *);
 static void oem_partconf(char *, char *);
 static void oem_bootbus(char *, char *);
@@ -113,6 +115,10 @@ static const struct {
 	[FASTBOOT_COMMAND_ACMD] = {
 		.command = "ACmd",
 		.dispatch = CONFIG_IS_ENABLED(FASTBOOT_UUU_SUPPORT, (run_acmd), (NULL))
+	},
+	[FASTBOOT_COMMAND_OEM_UPDATE_BOOTLOADER] = {
+		.command = "oem emmcupdate",
+		.dispatch = oem_emmcupdate
 	},
 };
 
@@ -295,10 +301,17 @@ void fastboot_data_complete(char *response)
  */
 static void __maybe_unused flash(char *cmd_parameter, char *response)
 {
-	if (IS_ENABLED(CONFIG_FASTBOOT_FLASH_MMC))
+	
+	if (IS_ENABLED(CONFIG_FASTBOOT_FLASH_MMC)) {
+		f_completed_flash_wic = 0;
 		fastboot_mmc_flash_write(cmd_parameter, fastboot_buf_addr,
 					 image_size, response);
-
+		if (f_completed_flash_wic){
+			update_bootloader_to_eMMC(CMD_UPDATE_BOOTLOADER_BL2, \
+			BL2_ADD_SAVE_TO_EMMC, CMD_UPDATE_BOOTLOADER_FIP, \
+			FIP_ADD_SAVE_TO_EMMC);
+		}
+	}
 	if (IS_ENABLED(CONFIG_FASTBOOT_FLASH_NAND))
 		fastboot_nand_flash_write(cmd_parameter, fastboot_buf_addr,
 					  image_size, response);
@@ -488,4 +501,40 @@ static void __maybe_unused oem_bootbus(char *cmd_parameter, char *response)
 		fastboot_fail("Cannot set oem bootbus", response);
 	else
 		fastboot_okay(NULL, response);
+}
+
+
+/**
+ * oem_emmcupdate() - Execute the OEM emmcupdate command
+ *
+ * @cmd_parameter: Pointer to command parameter
+ * @response: Pointer to fastboot response buffer
+ */
+static void oem_emmcupdate(char * cmd_parameter, char *response)
+{
+	int cmd_ret = 1;
+
+	if (!cmd_parameter) {
+		fastboot_fail("Expected command parameter", response);
+		return;
+	}
+
+	if (strcmp(cmd_parameter, "writebl2") && strcmp(cmd_parameter, "writefip")) {
+		printf("oem emmcupdate %s command is NOT supported yet\n", cmd_parameter);
+		fastboot_fail("Using unsupported oem emmcupdate command, please check!", response);
+		return;
+	}
+
+	if (!strcmp(cmd_parameter, "writebl2"))
+		cmd_ret = write_to_eMMC_bootpart(BL2_ADD_SAVE_TO_EMMC);
+
+	if (!strcmp(cmd_parameter, "writefip"))
+		cmd_ret = write_to_eMMC_bootpart(FIP_ADD_SAVE_TO_EMMC);
+
+	if (!cmd_ret) {
+		fastboot_okay(NULL, response);
+	} else {
+		printf("ERROR %d when running command %s\n", cmd_ret, cmd_parameter);
+		fastboot_fail("Failed to update eMMC bootloader", response);
+	}
 }

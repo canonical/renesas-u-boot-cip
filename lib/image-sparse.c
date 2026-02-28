@@ -48,6 +48,8 @@
 #include <linux/math64.h>
 #include <linux/err.h>
 
+uint8_t f_completed_flash_wic;
+
 static void default_log(const char *ignored, char *response) {}
 
 static lbaint_t write_sparse_chunk_raw(struct sparse_storage *info,
@@ -313,6 +315,10 @@ int write_sparse_image(struct sparse_storage *info,
 	if (total_blocks != sparse_header->total_blks) {
 		info->mssg("sparse image write failure", response);
 		return -1;
+	}
+	else if (chunk_header->chunk_type != CHUNK_TYPE_DONT_CARE) {
+		printf("Succeeded in updating WIC image into eMMC\n");
+		f_completed_flash_wic = 1;
 	}
 
 	return 0;

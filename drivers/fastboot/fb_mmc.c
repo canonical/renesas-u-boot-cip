@@ -18,8 +18,18 @@
 #include <div64.h>
 #include <linux/compat.h>
 #include <android_image.h>
+#include <asm/io.h>
+
+#define FASTBOOT_MAX_BLK_WRITE 16384
 
 #define BOOT_PARTITION_NAME "boot"
+
+#ifndef MAP_WRBACK
+#define MAP_WRBACK	0	/* Map using write-back caching */
+#endif
+
+#define MMC_DEFAULT_PARTITION	0
+#define MMC_BOOT0_PARTITION	1
 
 struct fb_mmc_sparse {
 	struct blk_desc	*dev_desc;
@@ -708,4 +718,102 @@ void fastboot_mmc_erase(const char *cmd, char *response)
 	printf("........ erased " LBAFU " bytes from '%s'\n",
 	       blks_size * info.blksz, cmd);
 	fastboot_okay(NULL, response);
+}
+
+/**
+ * write_to_eMMC_bootpart() - Write data to eMMC Boot Partition
+ *
+ * @blk_start: Start block
+ */
+int write_to_eMMC_bootpart(size_t blk_start)
+{
+	size_t blk_count = 0;
+	size_t wrote = 0;
+	struct mmc * mmc_dev = NULL;
+	void *buffer = NULL;
+	unsigned long addr = 0;
+	struct blk_desc *dev_desc = NULL;
+	unsigned long filesize = 0;
+
+	for (uint8_t dev_index = 0; dev_index < MAX_SDHI_CONTROLLER; dev_index++){
+		mmc_dev = find_mmc_device(dev_index);
+		if (mmc_dev && mmc_dev->capacity_boot)
+			break;
+		mmc_dev = NULL;
+	}
+	if (mmc_dev == NULL) {
+		printf("MMC device not found\n");
+		return -1;
+	}
+
+	/* Only switch to HW Boot Partition when storage device is eMMC
+	 * which supports HW Boot Partition (capacity_boot > 0)
+	 */
+	if (mmc_dev->capacity && mmc_dev->capacity_boot && mmc_switch_part(mmc_dev, MMC_BOOT0_PARTITION)) {
+		printf("MMC partition switch to %d failed.\n", MMC_BOOT0_PARTITION);
+		return -1;
+	}
+
+	dev_desc = mmc_get_blk_desc(mmc_dev);
+	if (!dev_desc || dev_desc->type == DEV_TYPE_UNKNOWN) {
+		pr_err("invalid mmc device\n");
+		return -EIO;
+	}
+
+	filesize = env_get_hex("filesize", 0);
+	blk_count = ((filesize + EMMC_BLOCK_SIZE - 1) / EMMC_BLOCK_SIZE);
+
+	/* With 'fastboot stage', the buffer has been stored at fastboot address */
+	addr = (unsigned long)CONFIG_FASTBOOT_BUF_ADDR;
+	buffer = map_physmem(addr, filesize, MAP_WRBACK);
+
+	debug("Start block (sector) is %zu. Writing %zu (filesize is %zu)"
+		" to eMMC Bootloaders\n", blk_start, blk_count, (size_t)filesize);
+	wrote = blk_dwrite(dev_desc, blk_start, blk_count, buffer);
+	debug("%zu blocks were written\n", wrote);
+	unmap_physmem(buffer, filesize);
+
+	if (wrote != blk_count) {
+		printf("MMC write error (count=%zu, wrote=%zu)\n", blk_count, wrote);
+		return -1;
+	}
+
+	/* Switch back to user HW partition to boot */
+	if (mmc_switch_part(mmc_dev, MMC_DEFAULT_PARTITION)) {
+		printf("MMC partition switch to %d failed.\n", MMC_DEFAULT_PARTITION);
+		return -1;
+	}
+
+    return 0;
+}
+
+/**
+ * update_bootloader_to_eMMC() - Update bootloader for eMMC from the WIC image
+ *
+ * @bl2_cmd: Command update B2L file
+ * @bl2_add: Address save GL2 to eMMC
+ * @fip_cmd: Command update FIP file
+ * @fip_add: Address save FIP to eMMC
+ */
+int update_bootloader_to_eMMC(const char *bl2_cmd, size_t bl2_add, const char *fip_cmd, size_t fip_add)
+{
+	/* Start update bootloader from the WIC image */
+	int cmd_ret = 1;
+	cmd_ret = run_command(bl2_cmd, 0);
+	if (cmd_ret == 0)
+		cmd_ret = write_to_eMMC_bootpart(bl2_add);
+
+	if (cmd_ret == 0)
+	{
+		cmd_ret = run_command(fip_cmd, 0);
+		if (cmd_ret == 0)
+			cmd_ret = write_to_eMMC_bootpart(fip_add);
+	}
+
+	if (!cmd_ret) {
+		printf("Succeeded in updating eMMC bootloader\n");
+	} else {
+		printf("Failed in updating eMMC bootloader\n");
+	}
+	return cmd_ret;
 }
