@@ -205,7 +205,8 @@
 		"192.168.10.7\0" \
 	"serverip=" \
 		"192.168.10.3\0" \
-	"bootcmd=run detect_boot\0"
+	"bootcmd=run detect_boot\0" \
+	"preboot=mmc dev 1\0"
 
 #else
 
