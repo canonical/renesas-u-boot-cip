@@ -80,14 +80,14 @@
     "load_uc=" \
       "setenv kernel_bootpart ${mmc_seed_part};" \
       "load ${devtype} ${mmcdev}:${kernel_bootpart} ${fitloadaddr} ${core_state};" \
-      "env import -v ${fitloadaddr} ${filesize} ${recovery_vars};" \
+      "env import ${fitloadaddr} ${filesize} ${recovery_vars};" \
       "if test \"${snapd_recovery_mode}\" = \"run\"; then " \
         "setenv bootargs \"console=${console} snapd_recovery_mode=${snapd_recovery_mode} ${snapd_standard_params} rw rootwait earlycon\";" \
         "setenv kernel_bootpart ${mmc_boot_part};" \
         "load ${devtype} ${mmcdev}:${kernel_bootpart} ${fitloadaddr} ${core_state};" \
-        "env import -v ${fitloadaddr} ${filesize} ${kernel_vars};" \
+        "env import ${fitloadaddr} ${filesize} ${kernel_vars};" \
         "if test -n \"${snap_kernel}\"; then " \
-             "env import -c -v ${fitloadaddr} ${filesize} ${kernel_vars};" \
+             "env import -c ${fitloadaddr} ${filesize} ${kernel_vars};" \
         "fi;" \
         "setenv kernel_name ${snap_kernel};" \
         "if test -n \"${kernel_status}\"; then " \
@@ -136,7 +136,7 @@
 /* Detection Logic */
 #define BOOT_DETECT_ENV \
     "detect_boot=" \
-        "setenv devtype mmc; setenv devnum 1; setenv distro_bootpart 3; " \
+        "setenv devtype mmc; setenv devnum 1; setenv distro_bootpart 2; " \
         "echo Checking ${devtype} ${devnum}:${distro_bootpart} for FIT structure; " \
         "if load ${devtype} ${devnum}:${distro_bootpart} ${fitloadaddr} uboot/ubuntu/boot.sel; then " \
             "echo FIT structure detected (uboot/ubuntu/boot.sel found); " \
