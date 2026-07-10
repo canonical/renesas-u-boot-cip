@@ -8,49 +8,138 @@
 
 #include <asm/arch/renesas.h>
 
+#ifndef CONFIG_REMAKE_ELF
 #define CONFIG_REMAKE_ELF
+#endif /* CONFIG_REMAKE_ELF */
 
 #ifdef CONFIG_SPL
+#ifdef CONFIG_SPL_TARGET
+#undef CONFIG_SPL_TARGET
+#endif /* CONFIG_SPL_TARGET */
 #define CONFIG_SPL_TARGET	"spl/u-boot-spl.scif"
-#endif
+#endif /* CONFIG_SPL */
 
 /* Boot options */
+#ifndef CONFIG_CMDLINE_TAG
 #define CONFIG_CMDLINE_TAG
+#endif /* CONFIG_CMDLINE_TAG */
+
+#ifndef CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_SETUP_MEMORY_TAGS
+#endif /* CONFIG_SETUP_MEMORY_TAGS */
+
+#ifndef CONFIG_INITRD_TAG
 #define CONFIG_INITRD_TAG
+#endif /* CONFIG_INITRD_TAG */
 
 /* Generic Interrupt Controller Definitions */
 /* RZ/G3E use GIC-v3 */
+#ifndef CONFIG_GICV3
 #define CONFIG_GICV3
+#endif /* CONFIG_GICV3 */
+
+#ifdef GICD_BASE
+#undef GICD_BASE
+#endif /* GICD_BASE */
 #define GICD_BASE	0x14900000
+
+#ifdef GICR_BASE
+#undef GICR_BASE
+#endif /* GICR_BASE */
 #define GICR_BASE	0x14940000
 
 /* console */
+#ifdef CONFIG_SYS_CBSIZE
+#undef CONFIG_SYS_CBSIZE
+#endif /* CONFIG_SYS_CBSIZE */
 #define CONFIG_SYS_CBSIZE		2048
+
+#ifdef CONFIG_SYS_BARGSIZE
+#undef CONFIG_SYS_BARGSIZE
+#endif /* CONFIG_SYS_BARGSIZE */
 #define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
+
+#ifdef CONFIG_SYS_BAUDRATE_TABLE
+#undef CONFIG_SYS_BAUDRATE_TABLE
+#endif /* CONFIG_SYS_BAUDRATE_TABLE */
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 115200, 38400 }
 
 /* PHY needs a longer autoneg timeout */
+#ifdef PHY_ANEG_TIMEOUT
+#undef PHY_ANEG_TIMEOUT
+#endif /* PHY_ANEG_TIMEOUT */
 #define PHY_ANEG_TIMEOUT		20000
 
 /* Memory */
+#ifdef CONFIG_SYS_INIT_SP_ADDR
+#undef CONFIG_SYS_INIT_SP_ADDR
+#endif /* CONFIG_SYS_INIT_SP_ADDR */
 #define CONFIG_SYS_INIT_SP_ADDR		CONFIG_SYS_TEXT_BASE
+
+#ifdef CONFIG_SH_SDHI_FREQ
+#undef CONFIG_SH_SDHI_FREQ
+#endif /* CONFIG_SH_SDHI_FREQ */
 #define CONFIG_SH_SDHI_FREQ		133000000
+
+#ifdef DRAM_RSV_SIZE
+#undef DRAM_RSV_SIZE
+#endif /* DRAM_RSV_SIZE */
 #define DRAM_RSV_SIZE			0x08000000
+
+#ifdef CONFIG_SYS_SDRAM_BASE
+#undef CONFIG_SYS_SDRAM_BASE
+#endif /* CONFIG_SYS_SDRAM_BASE */
 #define CONFIG_SYS_SDRAM_BASE		(0x40000000 + DRAM_RSV_SIZE)
+
+#ifdef CONFIG_SYS_SDRAM_SIZE
+#undef CONFIG_SYS_SDRAM_SIZE
+#endif /* CONFIG_SYS_SDRAM_SIZE */
 #define CONFIG_SYS_SDRAM_SIZE		(0x100000000u - DRAM_RSV_SIZE) //total 4GB
+
+#ifdef CONFIG_LOADADDR
+#undef CONFIG_LOADADDR
+#endif /* CONFIG_LOADADDR */
 #define CONFIG_LOADADDR			CONFIG_SYS_LOAD_ADDR  // Default load address for tftp,bootp...
+
+#ifndef CONFIG_VERY_BIG_RAM
 #define CONFIG_VERY_BIG_RAM
+#endif /* CONFIG_VERY_BIG_RAM */
+
+#ifdef CONFIG_MAX_MEM_MAPPED
+#undef CONFIG_MAX_MEM_MAPPED
+#endif /* CONFIG_MAX_MEM_MAPPED */
 #define CONFIG_MAX_MEM_MAPPED		(0x80000000u - DRAM_RSV_SIZE)
+
+#ifdef CONFIG_SYS_MONITOR_BASE
+#undef CONFIG_SYS_MONITOR_BASE
+#endif /* CONFIG_SYS_MONITOR_BASE */
 #define CONFIG_SYS_MONITOR_BASE		0x00000000
+
+#ifdef CONFIG_SYS_MONITOR_LEN
+#undef CONFIG_SYS_MONITOR_LEN
+#endif /* CONFIG_SYS_MONITOR_LEN */
 #define CONFIG_SYS_MONITOR_LEN		(1 * 1024 * 1024)
+
+#ifdef CONFIG_SYS_MALLOC_LEN
+#undef CONFIG_SYS_MALLOC_LEN
+#endif /* CONFIG_SYS_MALLOC_LEN */
 #define CONFIG_SYS_MALLOC_LEN		(64 * 1024 * 1024)
+
+#ifdef CONFIG_SYS_BOOTM_LEN
+#undef CONFIG_SYS_BOOTM_LEN
+#endif /* CONFIG_SYS_BOOTM_LEN */
 #define CONFIG_SYS_BOOTM_LEN		(256 * 1024 * 1024)
 
 /* The HF/QSPI layout permits up to 2 MiB large bootloader blob */
+#ifdef CONFIG_BOARD_SIZE_LIMIT
+#undef CONFIG_BOARD_SIZE_LIMIT
+#endif /* CONFIG_BOARD_SIZE_LIMIT */
 #define CONFIG_BOARD_SIZE_LIMIT		2097152
 
 /* FIT Environment (from FIT header) */
+#ifdef UBUNTU_ENV_LOAD_BOOT_CONFIG
+#undef UBUNTU_ENV_LOAD_BOOT_CONFIG
+#endif /* UBUNTU_ENV_LOAD_BOOT_CONFIG */
 #define UBUNTU_ENV_LOAD_BOOT_CONFIG \
     "load_uc=" \
       "setenv kernel_bootpart ${mmc_seed_part};" \
@@ -86,9 +175,15 @@
       "load ${devtype} ${mmcdev}:${platform_part} ${fdt_addr_r} ${fdtfile};" \
       "run loadfiles\0"
 
+#ifdef UBUNTU_ENV_LOAD_FIT_BOOT_FILES
+#undef UBUNTU_ENV_LOAD_FIT_BOOT_FILES
+#endif /* UBUNTU_ENV_LOAD_FIT_BOOT_FILES */
 #define UBUNTU_ENV_LOAD_FIT_BOOT_FILES \
     "loadfiles=load ${devtype} ${mmcdev}:${kernel_bootpart} ${fitloadaddr} ${kernel_prefix}/${kernel_filename}\0"
 
+#ifdef UBUNTU_ENV_DEFAULT
+#undef UBUNTU_ENV_DEFAULT
+#endif /* UBUNTU_ENV_DEFAULT */
 #define UBUNTU_ENV_DEFAULT \
     "kernel_filename=kernel.img\0" \
     "bootargs=modprobe.blacklist=adv7511\0" \
@@ -103,13 +198,20 @@
 
 
 /* Traditional Linux Boot */
+#ifdef BOOT_LINUX_ENV
+#undef BOOT_LINUX_ENV
+#endif /* BOOT_LINUX_ENV */
 #define BOOT_LINUX_ENV \
     "boot_linux=" \
         "load ${devtype} ${devnum}:${distro_bootpart} ${kernel_addr_r} /boot/Image; " \
         "load ${devtype} ${devnum}:${distro_bootpart} ${fdt_addr_r} /boot/${fdtfile}; " \
         "setenv bootargs console=${console} root=/dev/mmcblk1p3 rootwait rw; " \
         "booti ${kernel_addr_r} - ${fdt_addr_r};\0"
+
 /* Detection Logic */
+#ifdef BOOT_DETECT_ENV
+#undef BOOT_DETECT_ENV
+#endif /* BOOT_DETECT_ENV */
 #define BOOT_DETECT_ENV \
     "detect_boot=" \
         "setenv devtype mmc; setenv devnum 1; setenv distro_bootpart 2; " \
@@ -124,9 +226,10 @@
             "run boot_efi; " \
         "fi;\0"
 
-
-
 /* Simplified EFI boot for Ubuntu Classic - directly boot from MMC 1:2 */
+#ifdef SIMPLE_EFI_BOOT
+#undef SIMPLE_EFI_BOOT
+#endif /* SIMPLE_EFI_BOOT */
 #define SIMPLE_EFI_BOOT \
 	"boot_efi_binary=EFI/ubuntu/grubaa64.efi\0" \
 	"boot_efi=" \
@@ -135,6 +238,9 @@
 		"bootefi ${kernel_addr_r} ${fdt_addr_r};\0"
 
 /* Combined Environment */
+#ifdef CFG_EXTRA_ENV_SETTINGS
+#undef CFG_EXTRA_ENV_SETTINGS
+#endif /* CFG_EXTRA_ENV_SETTINGS */
 #define CFG_EXTRA_ENV_SETTINGS \
     "console=ttySC0\0" \
     "usb_pgood_delay=2000\0" \
@@ -159,6 +265,8 @@
     "bootcmd=run detect_boot;\0"
 
 /* Ethernet RAVB */
+#ifndef CONFIG_BITBANGMII_MULTI
 #define CONFIG_BITBANGMII_MULTI
+#endif /* CONFIG_BITBANGMII_MULTI */
 
 #endif /* __SMARC_RZG3E_H */
