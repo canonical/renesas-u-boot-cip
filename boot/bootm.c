@@ -999,7 +999,7 @@ static const void *boot_get_kernel(struct cmd_tbl *cmdtp, int flag, int argc,
 					++fdt_file; // removing leading "
 					snprintf(boot_addr_start, sizeof(boot_addr_start) - 1,
 						"0x%p#%s", (void *)afit_addr, fdt_file);
-					boot_addr_start[strlen(boot_addr_start)-1]=NULL; // removing closing "
+					boot_addr_start[strlen(boot_addr_start)-1] = '\0'; // removing closing "
 				} else {
 					snprintf(boot_addr_start, sizeof(boot_addr_start) - 1,
 						"0x%p#%s", (void *)afit_addr, fdt_file);
