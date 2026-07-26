@@ -171,7 +171,7 @@
 /* Auto-detect Boot Mode (FIT or EFI) */
 #define BOOT_DETECT_ENV \
 	"detect_boot=" \
-		"setenv devtype mmc; setenv devnum 0; setenv distro_bootpart 2; " \
+		"setenv devtype mmc; setenv devnum 1; setenv distro_bootpart 2; " \
 		"if test -e ${devtype} ${devnum}:${distro_bootpart} ${boot_efi_binary}; then " \
 			"echo Detected EFI boot from ${devtype} ${devnum}:${distro_bootpart}; " \
 			"run boot_efi; " \
