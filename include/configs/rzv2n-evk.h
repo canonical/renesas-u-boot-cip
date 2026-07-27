@@ -95,9 +95,9 @@
 				"elif test \"${kernel_status}\" = \"trying\"; then " \
 					"setenv kernel_status \"\";" \
 				"fi;" \
+				"env export -c ${fitloadaddr} ${kernel_vars};" \
+				"save ${devtype} ${mmcdev}:${kernel_bootpart} ${fitloadaddr} ${core_state} ${filesize};" \
 			"fi;" \
-			"env export -c ${fitloadaddr} ${kernel_vars};" \
-			"save ${devtype} ${mmcdev}:${kernel_bootpart} ${fitloadaddr} ${core_state} ${filesize};" \
 			"setenv kernel_prefix \"/uboot/ubuntu/${kernel_name}/\";" \
 		"else " \
 			"setenv bootargs \"console=${console} snapd_recovery_mode=${snapd_recovery_mode} snapd_recovery_system=${snapd_recovery_system} ${snapd_standard_params} " UC_EXTRA_BOOTARGS "rw rootwait earlycon\";" \
