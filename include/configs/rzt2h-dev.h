@@ -148,6 +148,19 @@
 			"run ${target}; " \
 		"done;\0"
 
+/* Detection Logic */
+#define BOOT_DETECT_ENV \
+    "detect_boot=" \
+        "setenv devtype mmc; setenv devnum 1; setenv distro_bootpart 2; " \
+        "echo Checking ${devtype} ${devnum}:${distro_bootpart} for FIT structure; " \
+        "if load ${devtype} ${devnum}:${distro_bootpart} ${fitloadaddr} uboot/ubuntu/boot.sel; then " \
+            "echo FIT structure detected (uboot/ubuntu/boot.sel found); " \
+            "run boot_uc; " \
+        "else " \
+            "echo No FIT structure found on mmc ${devnum}:${distro_bootpart}, trying EFI; " \
+            "run boot_efi; " \
+        "fi;\0"
+
 
 /* ENV setting */
 #define CFG_EXTRA_ENV_SETTINGS	\
@@ -165,13 +178,13 @@
     UBUNTU_ENV_DEFAULT \
     UBUNTU_ENV_LOAD_FIT_BOOT_FILES \
     EFI_ENV_DEFAULT \
+	BOOT_DETECT_ENV \
 	"dfu_alt_info=sf 0:0=fip.bin raw 0x60000 0x1F0000 \0" \
 	"dfu_bufsiz=0x1F0000\0" \
 	"ipaddr=192.168.10.7\0" \
     "serverip=192.168.10.1\0" \
 	"boot_uc=run load_uc;bootm ${fitloadaddr}#${fdtfile}\0" \
-    "bootmode=fit\0" /* Default to FIT */ \
-    "bootcmd=if test ${bootmode} = efi; then run boot_efi; else run boot_uc; fi\0"
+    "bootcmd=run detect_boot;\0"
 
 #else
 #define CONFIG_BOOTCOMMAND     "env default -a;run bootcmd_check;run bootimage"
