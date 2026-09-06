@@ -62,12 +62,12 @@
 	"load_uc=" \
 		"setenv kernel_bootpart ${mmc_seed_part};" \
 		"load ${devtype} ${mmcdev}:${kernel_bootpart} ${fitloadaddr} ${core_state};" \
-		"env import -c ${fitloadaddr} ${filesize} ${recovery_vars};" \
+		"env import -b ${fitloadaddr} ${filesize} ${recovery_vars};" \
 		"if test \"${snapd_recovery_mode}\" = \"run\"; then " \
 			"setenv bootargs \"console=${console} snapd_recovery_mode=${snapd_recovery_mode} ${snapd_standard_params} " UC_EXTRA_BOOTARGS "rw rootwait earlycon\";" \
 			"setenv kernel_bootpart ${mmc_boot_part};" \
 			"load ${devtype} ${mmcdev}:${kernel_bootpart} ${fitloadaddr} ${core_state};" \
-			"env import -c ${fitloadaddr} ${filesize} ${kernel_vars};" \
+			"env import -b ${fitloadaddr} ${filesize} ${kernel_vars};" \
 			"setenv kernel_name ${snap_kernel};" \
 			"if test -n \"${kernel_status}\"; then " \
 				"if test \"${kernel_status}\" = \"try\"; then " \
@@ -79,7 +79,7 @@
 					"setenv kernel_status \"\";" \
 				"fi;" \
 			"fi;" \
-			"env export -c ${fitloadaddr} ${kernel_vars};" \
+			"env export -b ${fitloadaddr} ${kernel_vars};" \
 			"save ${devtype} ${mmcdev}:${kernel_bootpart} ${fitloadaddr} ${core_state} ${filesize};" \
 			"setenv kernel_prefix \"/uboot/ubuntu/${kernel_name}/\";" \
 		"else " \

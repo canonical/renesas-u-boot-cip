@@ -61,12 +61,12 @@
 	"load_uc=" \
 		"setenv kernel_bootpart ${mmc_seed_part};" \
 		"load ${devtype} ${mmcdev}:${kernel_bootpart} ${fitloadaddr} ${core_state};" \
-		"env import -c ${fitloadaddr} ${filesize} ${recovery_vars};" \
+		"env import -b ${fitloadaddr} ${filesize} ${recovery_vars};" \
 		"if test \"${snapd_recovery_mode}\" = \"run\"; then " \
 			"setenv bootargs \"console=${console} snapd_recovery_mode=${snapd_recovery_mode} ${snapd_standard_params} " UC_EXTRA_BOOTARGS "rw rootwait earlycon\";" \
 			"setenv kernel_bootpart ${mmc_boot_part};" \
 			"load ${devtype} ${mmcdev}:${kernel_bootpart} ${fitloadaddr} ${core_state};" \
-			"env import -c ${fitloadaddr} ${filesize} ${kernel_vars};" \
+			"env import -b ${fitloadaddr} ${filesize} ${kernel_vars};" \
 			"setenv kernel_name ${snap_kernel};" \
 			"if test -n \"${kernel_status}\"; then " \
 				"if test \"${kernel_status}\" = \"try\"; then " \
@@ -88,7 +88,7 @@
 		"setenv platform_part 1;" \
 		"setenv fit_config r9a09g077m44-rzt2h-evk.dtb;" \
 		"run loadfiles; " \
-		"bootm ${fitloadaddr}#${fit_config}\0"
+		"bootm ${fitloadaddr}#${fdtfile}\0"
 
 #define UBUNTU_ENV_LOAD_FIT_BOOT_FILES \
 	"loadfiles=load ${devtype} ${mmcdev}:${kernel_bootpart} ${fitloadaddr} ${kernel_prefix}/${kernel_filename}\0"
