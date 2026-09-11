@@ -35,6 +35,20 @@
 
 #define DRIVER_NAME "sh-sdhi"
 
+/*
+ * Card power-cycle timings for RZ/T2H (R9A09G077) and RZ/N2H (R9A09G087).
+ *
+ * SH_SDHI_PWR_OFF_MS must be long enough for the card VDD rail, including the
+ * board bulk capacitance, to discharge below 0.5V as required by the SD
+ * Physical Layer spec, otherwise the card does not perform a full internal
+ * reset and keeps whatever state it was left in by the previous boot.
+ *
+ * SH_SDHI_PWR_ON_MS covers the VDD ramp plus the card's own power-up time,
+ * which must elapse before the first command is clocked out.
+ */
+#define SH_SDHI_PWR_OFF_MS	20
+#define SH_SDHI_PWR_ON_MS	10
+
 struct sh_sdhi_host {
 	void __iomem *addr;
 	int ch;
@@ -921,9 +935,17 @@ static int sh_sdhi_dm_probe(struct udevice *dev)
 	}
 
 #if ((defined CONFIG_R9A09G077) || (defined CONFIG_R9A09G087))
-	sh_sdhi_writel(host, SDHI_SD_STATUS, ~SD_STATUS_SD_PWEN & sh_sdhi_readl(host, SDHI_SD_STATUS));
-	mdelay(5);
+	/*
+	 * After a warm reset SDn_PWEN is left inactive, so the card is never
+	 * re-powered and goes undetected. Power-cycle it here, allowing the
+	 * rail time to discharge and the card time to come back up before
+	 * sh_sdhi_initialize_common() starts clocking out commands.
+	 */
+	sh_sdhi_writel(host, SDHI_SD_STATUS,
+		       ~SD_STATUS_SD_PWEN & sh_sdhi_readl(host, SDHI_SD_STATUS));
+	mdelay(SH_SDHI_PWR_OFF_MS);
 	sh_sdhi_writel(host, SDHI_SD_STATUS, SD_STATUS_SD_PWEN);
+	mdelay(SH_SDHI_PWR_ON_MS);
 #endif
 	sh_sdhi_initialize_common(host);
 
